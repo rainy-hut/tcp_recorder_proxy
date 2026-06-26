@@ -7,7 +7,11 @@ import sys
 def resource_path(relative_path: str) -> Path:
     bundled_root = getattr(sys, "_MEIPASS", None)
     if bundled_root:
-        return Path(bundled_root) / relative_path
+        root = Path(bundled_root)
+        packaged = root / "recorder_proxy" / "gui" / relative_path
+        if packaged.exists():
+            return packaged
+        return root / relative_path
     return Path(__file__).resolve().parent / relative_path
 
 

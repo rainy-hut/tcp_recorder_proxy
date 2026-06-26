@@ -15,8 +15,15 @@ from recorder_proxy.gui.resources import app_icon_path
 from recorder_proxy.proxy.proxy_service import ProxyService
 
 
+def _project_root() -> Path:
+    bundled_root = getattr(sys, "_MEIPASS", None)
+    if bundled_root:
+        return Path(bundled_root)
+    return Path(__file__).resolve().parents[3]
+
+
 def main() -> int:
-    project_root = Path(__file__).resolve().parents[3]
+    project_root = _project_root()
     app_config = load_app_config(project_root)
     qt_app = QApplication(sys.argv)
     icon = QIcon(str(app_icon_path()))
