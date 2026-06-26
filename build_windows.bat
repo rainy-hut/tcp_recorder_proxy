@@ -14,8 +14,10 @@ pyinstaller --noconfirm --clean --windowed ^
   --icon "build\app_icon.ico" ^
   --add-data "config;config" ^
   --add-data "src\recorder_proxy\gui\assets;recorder_proxy\gui\assets" ^
+  --collect-submodules recorder_proxy ^
   --hidden-import recorder_proxy.app.bootstrap ^
   --hidden-import recorder_proxy.gui.main_window ^
+  --hidden-import recorder_proxy.recording.raw_reparser ^
   run.py
 echo Build output: dist\TcpRecorderProxy\TcpRecorderProxy.exe
 endlocal
