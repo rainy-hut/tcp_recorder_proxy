@@ -1,0 +1,25 @@
+[[devices]]
+device_id = "BBU_MainBoard_01"
+device_type = "BBU"
+protocol_mode = "BBU_AUTO"
+label = "BBU_MainBoard_01"
+
+[[devices.routes]]
+route_id = "BBU_MainBoard_01_5026"
+listen_ip = "127.0.0.1"
+listen_port = 5026
+hardware_ip = "192.168.10.20"
+hardware_port = 5026
+
+[[devices]]
+device_id = "SignalGenerator_01"
+device_type = "1"
+protocol_mode = "TEXT_INSTRUMENT"
+label = "SignalGenerator_01"
+
+[[devices.routes]]
+route_id = "SignalGenerator_01_9001"
+listen_ip = "127.0.0.1"
+listen_port = 9001
+hardware_ip = "192.168.10.30"
+hardware_port = 9001
