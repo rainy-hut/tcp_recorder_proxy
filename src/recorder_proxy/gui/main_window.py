@@ -22,7 +22,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from qasync import asyncSlot
 
 from recorder_proxy.app.app_context import AppContext
 from recorder_proxy.config.models import DeviceConfig, ProtocolMode, RouteConfig
@@ -448,13 +447,16 @@ class MainWindow(QMainWindow):
         host, port = value.rsplit(":", 1)
         return host.strip(), int(port.strip())
 
-    @asyncSlot()
-    async def _start_clicked(self) -> None:
+    def _start_clicked(self, _checked: bool = False) -> None:
+        self._append_log("收到开始监听请求...")
+        self.start_button.setEnabled(False)
+        self._schedule(self._start_proxy())
+
+    async def _start_proxy(self) -> None:
         try:
             parse_enabled = self.recording_mode_group.checkedId() == 1
             self.context.proxy_service.set_parse_enabled(parse_enabled)
             await self.context.proxy_service.start()
-            self.start_button.setEnabled(False)
             self.stop_button.setEnabled(True)
             self._set_recording_mode_controls_enabled(False)
             self.status_label.setText("监听中")
@@ -462,12 +464,16 @@ class MainWindow(QMainWindow):
             self._append_log(f"代理已启动，录制模式：{mode_text}。")
             self._mark_routes("监听中")
         except Exception as exc:
+            self.start_button.setEnabled(True)
             QMessageBox.critical(self, "启动失败", repr(exc))
             self._append_log(f"启动失败: {exc!r}")
 
-    @asyncSlot()
-    async def _stop_clicked(self) -> None:
+    def _stop_clicked(self, _checked: bool = False) -> None:
+        self._append_log("收到停止并导出请求...")
         self.stop_button.setEnabled(False)
+        self._schedule(self._stop_proxy())
+
+    async def _stop_proxy(self) -> None:
         self._append_log("正在停止监听并等待队列落盘...")
         try:
             await self.context.proxy_service.stop()
@@ -475,8 +481,13 @@ class MainWindow(QMainWindow):
             self._set_recording_mode_controls_enabled(True)
             self.status_label.setText("已停止")
             self._mark_routes("已停止")
-            self._append_log("停止完成，TOML 已按设备导出。")
+            parsed_count = self.context.proxy_service.session.parsed_message_count
+            if parsed_count:
+                self._append_log(f"停止完成，已解析 {parsed_count} 条消息，TOML 已按设备导出。")
+            else:
+                self._append_log("停止完成，当前会话解析消息为 0；可在“原始日志”页点击“一键解析当前会话”。")
         except Exception as exc:
+            self.stop_button.setEnabled(True)
             QMessageBox.critical(self, "停止失败", repr(exc))
             self._append_log(f"停止失败: {exc!r}")
 
@@ -513,6 +524,13 @@ class MainWindow(QMainWindow):
 
     def _append_log(self, text: str) -> None:
         self.log.append(text)
+
+    def _schedule(self, coro) -> None:  # type: ignore[no-untyped-def]
+        try:
+            asyncio.get_event_loop().create_task(coro)
+        except Exception as exc:
+            self._append_log(f"任务调度失败: {exc!r}")
+            QMessageBox.critical(self, "任务调度失败", repr(exc))
 
     def _open_session_dir(self) -> None:
         session = self.context.proxy_service.session_manager.session

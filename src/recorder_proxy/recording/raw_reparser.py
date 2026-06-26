@@ -77,6 +77,7 @@ class RawLogReparser:
         sqlite.close()
         self.session.parse_error_count = parse_error_count
         self.session.unknown_message_count = unknown_message_count
+        self.session.parsed_message_count = message_count
         return ReparseResult(event_count, message_count, parse_error_count, unknown_message_count)
 
     def _event_from_index(self, raw_event: dict[str, object], device_dir) -> RawCaptureEvent:  # type: ignore[no-untyped-def]

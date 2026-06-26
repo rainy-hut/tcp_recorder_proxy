@@ -28,6 +28,7 @@ class RecordingSession:
     parse_dropped_count: int = 0
     parse_error_count: int = 0
     unknown_message_count: int = 0
+    parsed_message_count: int = 0
     generated_toml_files: list[str] = field(default_factory=list)
 
 
@@ -78,6 +79,7 @@ class SessionManager:
             "parse_dropped_count": session.parse_dropped_count,
             "parse_error_count": session.parse_error_count,
             "unknown_message_count": session.unknown_message_count,
+            "parsed_message_count": session.parsed_message_count,
             "generated_toml_files": session.generated_toml_files,
         }
         session.paths.summary_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

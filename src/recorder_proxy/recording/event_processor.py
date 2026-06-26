@@ -35,6 +35,7 @@ class _DeviceRawWriters:
         self.offsets: dict[tuple[str, str], int] = {}
         self.connections: dict[str, dict[str, object]] = {}
         self.event_count = 0
+        self.parsed_message_count = 0
         self.started_at = started_at
         self.parse_enabled = parse_enabled
 
@@ -98,9 +99,17 @@ class _DeviceRawWriters:
 
     def write_parsed(self, message: ParsedMessage) -> None:
         self.parsed.write(message.__dict__)
+        self.parsed_message_count += 1
 
     def write_warning(self, payload: dict[str, object]) -> None:
         self.warnings.write(payload)
+
+    def flush(self) -> None:
+        for file in self.files.values():
+            file.flush()
+        self.events.flush()
+        self.parsed.flush()
+        self.warnings.flush()
 
     def close(self, generated_toml_files: list[str], dropped_count: int, parse_error_count: int, unknown_count: int, routes: list[dict[str, object]]) -> None:
         for key, file in self.files.items():
@@ -123,6 +132,7 @@ class _DeviceRawWriters:
             "routes": routes,
             "connections": list(self.connections.values()),
             "event_count": self.event_count,
+            "parsed_message_count": self.parsed_message_count,
             "raw_capture_dropped_count": dropped_count,
             "parse_error_count": parse_error_count,
             "unknown_message_count": unknown_count,
@@ -186,6 +196,7 @@ class EventProcessor:
         self.tasks: list[asyncio.Task[None]] = []
         self.parse_error_count = 0
         self.unknown_count = 0
+        self.parsed_message_count = 0
 
     def start(self) -> None:
         self.tasks = [asyncio.create_task(self._raw_loop(), name="raw-capture-writer")]
@@ -204,7 +215,14 @@ class EventProcessor:
         self.session.parse_dropped_count = self.queues.stats.parse_dropped
         self.session.parse_error_count = self.parse_error_count
         self.session.unknown_message_count = self.unknown_count
+        self.session.parsed_message_count = self.parsed_message_count
+        self.flush_writers()
         self.sqlite.close()
+
+    def flush_writers(self) -> None:
+        for writer in self.device_writers.values():
+            writer.flush()
+        self.sqlite.commit()
 
     def close_manifests(self) -> None:
         route_by_device: dict[str, list[dict[str, object]]] = {}
@@ -275,6 +293,7 @@ class EventProcessor:
                                 }
                             )
                         writer.write_parsed(message)
+                        self.parsed_message_count += 1
                         self.sqlite.insert_parsed_message(message)
                     self.sqlite.commit()
                 except Exception as exc:

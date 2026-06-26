@@ -74,6 +74,63 @@ def test_raw_capture_writes_exact_bytes_and_index(tmp_path: Path):
     asyncio.run(run())
 
 
+def test_parse_enabled_writes_parsed_messages_on_stop(tmp_path: Path):
+    async def run() -> None:
+        route = RouteConfig(
+            route_id="BBU_5026",
+            device_id="BBU_01",
+            device_type="BBU",
+            protocol_mode=ProtocolMode.BBU_AUTO,
+            listen_ip="127.0.0.1",
+            listen_port=5026,
+            hardware_ip="192.0.2.1",
+            hardware_port=5026,
+        )
+        config = AppConfig(
+            settings=AppSettings(project_root=tmp_path, recordings_dir=tmp_path / "recordings"),
+            devices=[DeviceConfig("BBU_01", "BBU", ProtocolMode.BBU_AUTO, "BBU", [route])],
+        )
+        session = SessionManager(config.settings).start()
+        session.recording_mode = "RAW_AND_PARSE"
+        queues = RecordingQueues(10, 10)
+        processor = EventProcessor(config, session, queues, parse_enabled=True)
+        processor.start()
+        conn = ConnectionInfo(
+            session_id=session.session_id,
+            connection_id="conn_000001",
+            device_id="BBU_01",
+            device_type="BBU",
+            route_id="BBU_5026",
+            listen_ip="127.0.0.1",
+            listen_port=5026,
+            client_ip="127.0.0.1",
+            client_port=60000,
+            hardware_ip="192.0.2.1",
+            hardware_port=5026,
+        )
+        queues.offer_raw(
+            RawCaptureEvent(
+                event_id="evt_1",
+                connection=conn,
+                timestamp_utc=utc_now_iso(),
+                timestamp_ns=timestamp_ns(),
+                monotonic_ns=monotonic_ns(),
+                direction="client_to_hardware",
+                chunk_sequence=1,
+                data=b"LST SOFTWARE:;\r\n",
+            )
+        )
+        await processor.stop()
+
+        parsed_path = session.paths.raw / "BBU_01" / "parsed_messages.jsonl"
+        parsed_lines = parsed_path.read_text(encoding="utf-8").splitlines()
+        assert len(parsed_lines) == 1
+        assert json.loads(parsed_lines[0])["classification"] == "BBU_MML_PLAIN"
+        assert session.parsed_message_count == 1
+
+    asyncio.run(run())
+
+
 def test_raw_only_mode_does_not_parse(tmp_path: Path):
     async def run() -> None:
         route = RouteConfig(
