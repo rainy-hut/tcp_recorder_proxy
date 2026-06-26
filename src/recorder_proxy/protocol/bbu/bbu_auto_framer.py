@@ -22,17 +22,17 @@ class BbuAutoFramer:
 
     def _classify_frame(self, frame: bytes, framing_error: str | None) -> FramedMessage:
         if framing_error is not None:
-            return FramedMessage(frame, str(MessageClassification.UNKNOWN_BINARY), "FAILED", {}, framing_error)
+            return FramedMessage(frame, MessageClassification.UNKNOWN_BINARY.value, "FAILED", {}, framing_error)
         mml_text, encoding = self.mml.extract(frame)
         if mml_text:
             return FramedMessage(
                 frame,
-                str(MessageClassification.BBU_MML_FRAMED),
+                MessageClassification.BBU_MML_FRAMED.value,
                 "SUCCESS",
                 {"mml_text": mml_text, "encoding": encoding, "outer_start_tag": "F634"},
             )
         try:
             summary = self.binary.decode(frame)
-            return FramedMessage(frame, str(MessageClassification.BBU_BINARY), "PARTIAL_SUCCESS", summary)
+            return FramedMessage(frame, MessageClassification.BBU_BINARY.value, "PARTIAL_SUCCESS", summary)
         except Exception as exc:
-            return FramedMessage(frame, str(MessageClassification.UNKNOWN_BINARY), "FAILED", {"outer_start_tag": "F634"}, str(exc))
+            return FramedMessage(frame, MessageClassification.UNKNOWN_BINARY.value, "FAILED", {"outer_start_tag": "F634"}, str(exc))

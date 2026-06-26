@@ -94,6 +94,9 @@ class SQLiteRepository:
             ),
         )
 
+    def clear_parsed_messages(self, session_id: str) -> None:
+        self.conn.execute("DELETE FROM parsed_messages WHERE session_id=?", (session_id,))
+
     def commit(self) -> None:
         self.conn.commit()
 

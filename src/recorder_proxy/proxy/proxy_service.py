@@ -12,6 +12,7 @@ from recorder_proxy.recording.exporters.bbu_binary_exporter import BbuBinaryExpo
 from recorder_proxy.recording.exporters.bbu_mml_exporter import BbuMmlExporter
 from recorder_proxy.recording.exporters.export_validator import ExportValidator
 from recorder_proxy.recording.exporters.text_instrument_exporter import TextInstrumentExporter
+from recorder_proxy.recording.raw_reparser import RawLogReparser, ReparseResult
 from recorder_proxy.recording.session_manager import RecordingSession, SessionManager
 
 
@@ -76,3 +77,11 @@ class ProxyService:
                     paths.append(path)
                     session.generated_toml_files.append(str(path.relative_to(session.paths.root)))
         return paths
+
+    def reparse_current_session(self, export_after_parse: bool = True) -> ReparseResult:
+        if self.running:
+            raise RuntimeError("请先停止监听，再解析原始日志")
+        result = RawLogReparser(self.app_config, self.session).reparse()
+        if export_after_parse:
+            self.export_all()
+        return result

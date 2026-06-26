@@ -22,7 +22,7 @@ class TextFramer:
         return [
             FramedMessage(
                 data=data,
-                classification=str(classification),
+                classification=classification.value,
                 parse_status="SUCCESS" if classification != MessageClassification.UNKNOWN_BINARY else "FAILED",
                 decoded_summary={"encoding": encoding, "text_preview": text[:200]},
             )

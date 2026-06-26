@@ -232,7 +232,11 @@ class MainWindow(QMainWindow):
         open_raw = QPushButton("打开 raw 目录")
         open_raw.setObjectName("SecondaryButton")
         open_raw.clicked.connect(self._open_raw_dir)
+        reparse = QPushButton("一键解析当前会话")
+        reparse.setObjectName("PrimaryButton")
+        reparse.clicked.connect(self._reparse_current_session)
         panel_layout.addWidget(open_raw)
+        panel_layout.addWidget(reparse)
         layout.addWidget(panel)
         layout.addStretch(1)
         return page
@@ -523,6 +527,32 @@ class MainWindow(QMainWindow):
     def _open_path(self, path: Path) -> None:
         path.mkdir(parents=True, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+
+    def _reparse_current_session(self) -> None:
+        service = self.context.proxy_service
+        if service.running:
+            QMessageBox.information(self, "正在录制", "请先停止监听，再解析原始日志。")
+            return
+        if service.session_manager.session is None:
+            QMessageBox.information(self, "没有会话", "当前还没有可解析的录制会话。")
+            return
+        try:
+            result = service.reparse_current_session(export_after_parse=True)
+            self._append_log(
+                "一键解析完成："
+                f"原始事件 {result.event_count}，解析消息 {result.message_count}，"
+                f"失败 {result.parse_error_count}，未知 {result.unknown_message_count}。"
+            )
+            QMessageBox.information(
+                self,
+                "解析完成",
+                f"原始事件：{result.event_count}\n"
+                f"解析消息：{result.message_count}\n"
+                f"失败：{result.parse_error_count}\n"
+                f"未知：{result.unknown_message_count}",
+            )
+        except Exception as exc:
+            QMessageBox.warning(self, "解析失败", str(exc))
 
     def closeEvent(self, event) -> None:  # type: ignore[no-untyped-def]
         if self.context.proxy_service.running:
